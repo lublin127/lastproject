@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from api.app_config import AppConfig
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,6 +29,9 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
+# Don't to save session data in database:
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -37,10 +41,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'rest_framework',
-    'api.apps.ApiConfig'
+    'api.apps.ApiConfig',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -79,16 +83,18 @@ WSGI_APPLICATION = 'vacations.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'vacation_project',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': 'localhost',  
+        'NAME': AppConfig.mysql_database,
+        'USER': AppConfig.mysql_user,
+        'PASSWORD': AppConfig.mysql_password,
+        'HOST': AppConfig.mysql_host,  
         'PORT': '3306',  
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         }
     }
 }
+
+
 
 
 

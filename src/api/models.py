@@ -4,24 +4,48 @@ from django.core.exceptions import ValidationError
 from django.db.models import IntegerChoices
 from django.utils.timezone import now
 from rest_framework.serializers import ModelSerializer, SerializerMethodField
+from rest_framework import serializers
+from enum import Enum
+
+
+# ---------------------------------------------------------
 
 class RoleModel(IntegerChoices):
     Admin = 8, 'Admin'
     User = 9, 'User'
-        
-class UserModel(Model):
-    first_name = CharField(max_length=20, validators=[MinLengthValidator(2), MaxLengthValidator(20)])
-    last_name = CharField(max_length=30, validators=[MinLengthValidator(2), MaxLengthValidator(30)])
-    email = EmailField(validators=[EmailValidator(), MinLengthValidator(5), MaxLengthValidator(100)])
-    password = CharField(max_length=100, validators=[MinLengthValidator(4), MaxLengthValidator(100)])
-    role = IntegerField(choices=RoleModel.choices)
 
-    def clean(self):
-        if not self.role in [RoleModel.Admin, RoleModel.User]:
-            raise ValidationError({'role': 'Role must be User or Admin.'})
+# ---------------------------------------------------------
         
+
+class UserModel(Model):
+    user_id = AutoField(primary_key=True)
+    first_name = CharField(max_length=20)
+    last_name = CharField(max_length=30)
+    email = EmailField(max_length=100)
+    password = CharField(max_length=100)
+    role_id = IntegerField()
+
     class Meta:
         db_table = 'users'
+
+# Define the User serializer
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserModel
+        fields = "__all__"
+        
+# Define the Total users model
+class TotalUsers(Model):
+    total_users = IntegerField(default=0)
+            
+# Define the User serializer for the count of total users
+class UserCountSerializer(serializers.Serializer):
+    total_users = serializers.IntegerField()
+
+    
+
+# ---------------------------------------------------------
+
 
 
 class Country(Model):
@@ -34,9 +58,6 @@ class Country(Model):
 
     def __str__(self):
         return self.country
-    
-    
-
 
 class VacationsModel(Model):
     vacation_id = AutoField(primary_key=True)
@@ -47,51 +68,9 @@ class VacationsModel(Model):
     price = DecimalField(max_digits=10, decimal_places=2)
     image_file_name = ImageField(upload_to='static/images/vacations')
 
-
-
-    def clean(self):
-        if self.start_date < now().date():
-            raise ValidationError({'start_date': 'Start date cannot be in the past.'})
-        if self.end_date < self.start_date:
-            raise ValidationError({'end_date': 'End date cannot be earlier than the start date.'})
-        if not self.price or self.price < 0 or self.price > 10000:
-            raise ValidationError({'price': 'Price must be between 0 and 10,000.'})
-        if len(self.vacation_description) < 2 or len(self.vacation_description) > 1000:
-            raise ValidationError({'vacation_description': 'Description must be 2-1000 characters.'})
-        if not self.image_file_name:
-            raise ValidationError({'image': 'Please upload an image.'})
-        
-        
     
     class Meta:
         db_table = 'vacations'
-
-
-class CredentialsModel(Model):
-
-    email = EmailField(validators=[MinLengthValidator(5), MaxLengthValidator(100)])
-    password = CharField(max_length=100, validators=[MinLengthValidator(4), MaxLengthValidator(100)])
-
-    def validate(self):
-        # Validate the email and password fields using Django's built-in functionality
-        try:
-            EmailValidator()(self.email)
-        except ValidationError as e:
-            return f"Email not valid: {e}"
-
-        # Django models automatically call full_clean() to run validators before saving,
-        # which would include our custom MinLengthValidator and MaxLengthValidator.
-        # If you want to manually validate in your method, you can call full_clean() like this:
-        try:
-            self.full_clean()
-        except ValidationError as e:
-            return e.messages
-
-        return None
-
-    def __str__(self):
-        return self.email
-
 
 class VacationSerializer(ModelSerializer):
     country_name = SerializerMethodField()
@@ -102,5 +81,44 @@ class VacationSerializer(ModelSerializer):
 
     def get_country_name(self, obj):
         return obj.country.country  # Correctly accessing the related Country object
+    
+class VacationStatsSerializer(serializers.Serializer):
+    past_vacations = serializers.IntegerField()
+    on_going_vacations = serializers.IntegerField()
+    future_vacations = serializers.IntegerField()
+    
+
+# ---------------------------------------------------------
+
+# Define the Like model
+class Like(Model):
+    user_id = IntegerField()
+    vacation_id = IntegerField()
+    
+    # specify the name of the database table for this model
+    class Meta:
+        db_table = 'likes'
+
+# Define the Like serializer
+class LikeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Like
+        fields = ['user_id', 'vacation_id']
+
+# # Define the Total Likes model
+# class TotalLikes(models.Model):
+#     total_likes = models.IntegerField(default=0)
+    
+# Define the TotalLikes serializer     
+class TotalLikesSerializer(serializers.Serializer):
+        total_likes = serializers.IntegerField()
+        
+# Define the LikeDistribution serializer     
+class LikeDistributionSerializer(serializers.Serializer):
+        destination = serializers.CharField()
+        likes = serializers.IntegerField()
+
+
+
 
 
